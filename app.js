@@ -2,6 +2,10 @@ if (process.env.NODE_ENV !== "production") {
   require("dotenv").config();
 }
 
+// 3oCNeedSUZ9AjVyJ mongoDB password
+// jHG9xHj7uDow18SO new database user password
+// Connect to Cluster: mongodb+srv://our-first-user:<password>@cluster.u2yn1.mongodb.net/myFirstDatabase?retryWrites=true&w=majority
+
 console.log(process.env.SECRET);
 console.log(process.env.API_KEY);
 
@@ -21,7 +25,11 @@ const userRoutes = require("./routes/users");
 const campgroundRouters = require("./routes/campground");
 const reviewsRouters = require("./routes/reviews");
 
-mongoose.connect("mongodb://localhost:27017/yelp-camp", {
+const MongoDBStore = require("connect-mongo")(session);
+
+const dbUrl = process.env.DB_URL || "mongodb://localhost:27017/yelp-camp";
+// "mongodb://localhost:27017/yelp-camp"
+mongoose.connect(dbUrl, {
   useNewUrlParser: true,
   useCreateIndex: true,
   useUnifiedTopology: true,
@@ -45,8 +53,22 @@ app.use(methodOverride("_method"));
 
 app.use(express.static(path.join(__dirname, "public")));
 
+const secret = process.env.SECRET || "thisshouldbeabettersecret!";
+
+const store = new MongoDBStore({
+  url: dbUrl,
+  secret,
+  touchAfter: 24 * 60 * 60,
+});
+
+store.on("error", function (e) {
+  console.log("SESSION STORE ERROR", e);
+});
+
 const sessionConfig = {
-  secret: "thisshouldbeabettersecret!",
+  store,
+  name: "session",
+  secret,
   resave: false,
   saveUninitialized: true,
   cookie: {
@@ -55,6 +77,7 @@ const sessionConfig = {
     maxAge: 1000 * 60 * 60 * 24 * 7,
   },
 };
+
 app.use(session(sessionConfig));
 app.use(flash());
 passport.use(new LocalStrategy(User.authenticate()));
